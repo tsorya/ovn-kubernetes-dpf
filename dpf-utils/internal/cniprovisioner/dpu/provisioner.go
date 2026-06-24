@@ -151,10 +151,6 @@ type DPUCNIProvisioner struct {
 	dpuNodeLeaseRenewInterval  int
 	dpuNodeLeaseDuration       int
 
-	// writeOVNKConfigNamespaceToOVNKConf, when true, adds [kubernetes] ovn-config-namespace to ovn_k8s.conf (upstream
-	// Kubernetes.OVNConfigNamespace; DPU leases and other config objects use this namespace).
-	writeOVNKConfigNamespaceToOVNKConf bool
-	ovnConfigNamespace               string
 }
 
 // New creates a DPUCNIProvisioner that can configure the system
@@ -209,20 +205,6 @@ func (p *DPUCNIProvisioner) SetDPUNodeLeaseForOVNConf(renewInterval, leaseDurati
 	p.writeDPUNodeLeaseToOVNKConf = true
 	p.dpuNodeLeaseRenewInterval = renewInterval
 	p.dpuNodeLeaseDuration = leaseDuration
-}
-
-// SetOVNConfigNamespaceForOVNConf sets Kubernetes.OVNConfigNamespace (INI key ovn-config-namespace under [kubernetes])
-// in ovn_k8s.conf. Pass the namespace where OVN-Kubernetes coordination leases and related config live; empty string
-// clears the option so writeFilesForOVN omits the block.
-func (p *DPUCNIProvisioner) SetOVNConfigNamespaceForOVNConf(namespace string) {
-	ns := strings.TrimSpace(namespace)
-	if ns == "" {
-		p.writeOVNKConfigNamespaceToOVNKConf = false
-		p.ovnConfigNamespace = ""
-		return
-	}
-	p.writeOVNKConfigNamespaceToOVNKConf = true
-	p.ovnConfigNamespace = ns
 }
 
 // RunOnce runs the provisioning flow once and exits
@@ -538,11 +520,6 @@ func (p *DPUCNIProvisioner) writeFilesForOVN() error {
 		return fmt.Errorf("error while getting the gateway router subnet content: %w", err)
 	}
 	content += routerSubnetContent
-
-	if p.writeOVNKConfigNamespaceToOVNKConf {
-		content += "\n[kubernetes]\n"
-		content += "ovn-config-namespace=" + p.ovnConfigNamespace + "\n"
-	}
 
 	if p.writeDPUNodeLeaseToOVNKConf {
 		content += "\n[ovnkubenode]\n"

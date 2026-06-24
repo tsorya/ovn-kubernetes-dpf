@@ -337,8 +337,6 @@ spec:
           value: {{ .Values.dpuHealthCheck.renewInterval | quote }}
         - name: OVNKUBE_NODE_DPU_LEASE_DURATION
           value: {{ .Values.dpuHealthCheck.leaseDuration | quote }}
-        - name: OVNKUBE_NODE_LEASE_NAMESPACE
-          value: {{ default .Release.Namespace .Values.leaseNamespace | quote }}
         volumeMounts:
         {{- if .Values.dpuManifests.externalDHCP }}
         # Needed so that we can write netplan config files
@@ -423,9 +421,7 @@ spec:
               name: {{ include "ovn-kubernetes.fullname" . }}-config
               key: k8s_apiserver
         - name: OVN_KUBERNETES_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
+          value: {{ default .Release.Namespace .Values.hostOvnKubernetesNamespace | quote }}
         - name: K8S_NODE_IP
           valueFrom:
             fieldRef:
@@ -485,9 +481,7 @@ spec:
               name: {{ include "ovn-kubernetes.fullname" . }}-config
               key: k8s_apiserver
         - name: OVN_KUBERNETES_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
+          value: {{ default .Release.Namespace .Values.hostOvnKubernetesNamespace | quote }}
         - name: K8S_NODE_IP
           valueFrom:
             fieldRef:
@@ -548,9 +542,7 @@ spec:
               name: {{ include "ovn-kubernetes.fullname" . }}-config
               key: k8s_apiserver
         - name: OVN_KUBERNETES_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
+          value: {{ default .Release.Namespace .Values.hostOvnKubernetesNamespace | quote }}
         - name: OVN_SSL_ENABLE
           value: "no"
         - name: OVN_NORTH
@@ -710,9 +702,7 @@ spec:
             fieldRef:
               fieldPath: status.hostIP
         - name: OVN_KUBERNETES_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
+          value: {{ default .Release.Namespace .Values.hostOvnKubernetesNamespace | quote }}
         - name: OVN_GATEWAY_MODE
           value: shared
         - name: OVN_GATEWAY_OPTS
@@ -820,8 +810,6 @@ spec:
           value: "k8s.ovn.org/ovn-managed=false"
         - name: OVNKUBE_NODE_MODE
           value: "dpu"
-        - name: OVNKUBE_NODE_LEASE_NAMESPACE
-          value: {{ default .Release.Namespace .Values.leaseNamespace }}
         readinessProbe:
           httpGet:
             path: /metrics
@@ -888,9 +876,7 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         - name: OVN_KUBERNETES_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
+          value: {{ default .Release.Namespace .Values.hostOvnKubernetesNamespace | quote }}
         - name: OVN_SSL_ENABLE
           value: ""
         - name: OVN_NORTH

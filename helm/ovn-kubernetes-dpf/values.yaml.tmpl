@@ -134,6 +134,11 @@ commonManifests:
 # if it's not set.
 leaseNamespace: ""
 
+# -- The namespace where OVN-Kubernetes runs on the host cluster. On the DPU, all containers
+# use this value as OVN_KUBERNETES_NAMESPACE to ensure the correct host-cluster namespace is
+# referenced for --ovn-config-namespace and other coordination. Defaults to Release.Namespace.
+hostOvnKubernetesNamespace: ""
+
 # -- DPU Health Check Configuration
 # Controls the lease-based health monitoring for DPU nodes
 dpuHealthCheck:
