@@ -33,7 +33,6 @@ import (
 	"github.com/nvidia/ovn-kubernetes-components/internal/constants"
 	"github.com/nvidia/ovn-kubernetes-components/internal/utils/ovsclient"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -41,7 +40,6 @@ import (
 	"k8s.io/utils/clock"
 	kexec "k8s.io/utils/exec"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Mode string
@@ -105,7 +103,7 @@ type DPUCNIProvisioner struct {
 	networkHelper              networkhelper.NetworkHelper
 	exec                       kexec.Interface
 	dpuClusterKubernetesClient kubernetes.Interface
-	hostKubernetesClient       client.Client
+	hostKubernetesClient       kubernetes.Interface
 
 	// FileSystemRoot controls the file system root. It's used for enabling easier testing of the package. Defaults to
 	// empty.
@@ -188,7 +186,7 @@ func New(ctx context.Context,
 	}
 }
 
-func (p *DPUCNIProvisioner) SetHostKubernetesClient(c client.Client) {
+func (p *DPUCNIProvisioner) SetHostKubernetesClient(c kubernetes.Interface) {
 	p.hostKubernetesClient = c
 }
 
@@ -272,6 +270,9 @@ func (p *DPUCNIProvisioner) configure() error {
 
 // reconcileHostNodeChassisID removes a stale host-cluster node chassis annotation when it differs from the local OVS
 // system-id. This allows ovnkube-node to re-register after DPU reprovisioning.
+// The patch is sent via the nodes/status subresource because the DPU service account only has RBAC
+// to patch nodes/status, not the main nodes resource. The Kubernetes API server accepts metadata
+// changes (annotations, labels) through the status subresource.
 func (p *DPUCNIProvisioner) reconcileHostNodeChassisID(hostName string) error {
 	systemID, err := p.ovsClient.GetSystemID()
 	if err != nil {
@@ -281,8 +282,8 @@ func (p *DPUCNIProvisioner) reconcileHostNodeChassisID(hostName string) error {
 		return fmt.Errorf("OVS system-id is empty for DPU node %s (host node %s)", p.dpuHostName, hostName)
 	}
 
-	node := &corev1.Node{}
-	if err := p.hostKubernetesClient.Get(p.ctx, k8stypes.NamespacedName{Name: hostName}, node); err != nil {
+	node, err := p.hostKubernetesClient.CoreV1().Nodes().Get(p.ctx, hostName, metav1.GetOptions{})
+	if err != nil {
 		return fmt.Errorf("error while getting host cluster node %s: %w", hostName, err)
 	}
 
@@ -297,9 +298,8 @@ func (p *DPUCNIProvisioner) reconcileHostNodeChassisID(hostName string) error {
 	}
 
 	klog.Infof("Removing stale %s=%s from host cluster node %s to allow reprovisioned DPU system-id %s to register", hostNodeChassisIDAnnotationKey, current, hostName, systemID)
-	base := node.DeepCopy()
-	delete(node.Annotations, hostNodeChassisIDAnnotationKey)
-	if err := p.hostKubernetesClient.Patch(p.ctx, node, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{})); err != nil {
+	patchBytes := []byte(fmt.Sprintf(`{"metadata":{"annotations":{"%s":null}}}`, hostNodeChassisIDAnnotationKey))
+	if _, err := p.hostKubernetesClient.CoreV1().Nodes().Patch(p.ctx, hostName, k8stypes.MergePatchType, patchBytes, metav1.PatchOptions{}, "status"); err != nil {
 		return fmt.Errorf("error while removing stale %s annotation from host node %s: %w", hostNodeChassisIDAnnotationKey, hostName, err)
 	}
 	klog.Infof("Removed stale %s=%s from host cluster node %s", hostNodeChassisIDAnnotationKey, current, hostName)

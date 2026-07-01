@@ -38,12 +38,10 @@ import (
 
 	"github.com/vishvananda/netlink"
 	"k8s.io/client-go/kubernetes"
-	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/clock"
 	kexec "k8s.io/utils/exec"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
@@ -259,7 +257,7 @@ func getHostCIDR() (*net.IPNet, error) {
 	return hostCIDR, nil
 }
 
-func newHostClusterClient(apiServer string) (client.Client, error) {
+func newHostClusterClient(apiServer string) (kubernetes.Interface, error) {
 	if strings.TrimSpace(apiServer) == "" {
 		return nil, errors.New("K8S_APISERVER must be set to initialize host-cluster access")
 	}
@@ -285,7 +283,7 @@ func newHostClusterClient(apiServer string) (client.Client, error) {
 		},
 	}
 
-	hostClient, err := client.New(hostConfig, client.Options{Scheme: k8sscheme.Scheme})
+	hostClient, err := kubernetes.NewForConfig(hostConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error while creating host cluster client: %w", err)
 	}
