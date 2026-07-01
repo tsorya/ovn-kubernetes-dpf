@@ -36,12 +36,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	testclient "k8s.io/client-go/kubernetes/fake"
-	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	clock "k8s.io/utils/clock/testing"
 	kexec "k8s.io/utils/exec"
 	kexecTesting "k8s.io/utils/exec/testing"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func newHostKubernetesClient(nodeName string) *corev1.Node {
@@ -86,7 +84,7 @@ var _ = Describe("DPU CNI Provisioner in Internal mode", func() {
 				},
 			}
 			kubernetesClient := testclient.NewClientset()
-			hostKubernetesClient := fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(newHostKubernetesClient("host1")).Build()
+			hostKubernetesClient := testclient.NewClientset(newHostKubernetesClient("host1"))
 			provisioner := dpucniprovisioner.New(context.Background(), dpucniprovisioner.InternalIPAM, clock.NewFakeClock(time.Now()), ovsClient, networkhelper, fakeExec, kubernetesClient, vtepIPNet, gateway, vtepCIDR, hostCIDR, pfIPNet, fakeNode.Name, nil, 8940)
 			provisioner.SetHostKubernetesClient(hostKubernetesClient)
 
@@ -199,7 +197,7 @@ var _ = Describe("DPU CNI Provisioner in Internal mode", func() {
 				},
 			}
 			kubernetesClient := testclient.NewClientset()
-			hostKubernetesClient := fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(newHostKubernetesClient("host1")).Build()
+			hostKubernetesClient := testclient.NewClientset(newHostKubernetesClient("host1"))
 			provisioner := dpucniprovisioner.New(context.Background(), dpucniprovisioner.InternalIPAM, clock.NewFakeClock(time.Now()), ovsClient, networkhelper, fakeExec, kubernetesClient, vtepIPNet, gateway, vtepCIDR, hostCIDR, pfIPNet, fakeNode.Name, nil, 1440)
 			provisioner.SetHostKubernetesClient(hostKubernetesClient)
 
@@ -312,7 +310,7 @@ var _ = Describe("DPU CNI Provisioner in Internal mode", func() {
 				},
 			}
 			kubernetesClient := testclient.NewClientset(fakeNode)
-			hostKubernetesClient := fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(hostNode).Build()
+			hostKubernetesClient := testclient.NewClientset(hostNode)
 			provisioner := dpucniprovisioner.New(context.Background(), dpucniprovisioner.InternalIPAM, clock.NewFakeClock(time.Now()), ovsClient, networkhelper, fakeExec, kubernetesClient, vtepIPNet, gateway, vtepCIDR, hostCIDR, pfIPNet, fakeNode.Name, nil, 1500)
 			provisioner.SetHostKubernetesClient(hostKubernetesClient)
 
@@ -344,8 +342,7 @@ var _ = Describe("DPU CNI Provisioner in Internal mode", func() {
 			err = provisioner.RunOnce()
 			Expect(err).ToNot(HaveOccurred())
 
-			updatedHostNode := &corev1.Node{}
-			err = hostKubernetesClient.Get(ctx, types.NamespacedName{Name: "host1"}, updatedHostNode)
+			updatedHostNode, err := hostKubernetesClient.CoreV1().Nodes().Get(ctx, "host1", metav1.GetOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updatedHostNode.Annotations).ToNot(HaveKey("k8s.ovn.org/node-chassis-id"))
 		})
@@ -381,7 +378,7 @@ var _ = Describe("DPU CNI Provisioner in Internal mode", func() {
 				},
 			}
 			kubernetesClient := testclient.NewClientset(fakeNode)
-			hostKubernetesClient := fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(hostNode).Build()
+			hostKubernetesClient := testclient.NewClientset(hostNode)
 			provisioner := dpucniprovisioner.New(context.Background(), dpucniprovisioner.InternalIPAM, clock.NewFakeClock(time.Now()), ovsClient, networkhelper, fakeExec, kubernetesClient, vtepIPNet, gateway, vtepCIDR, hostCIDR, pfIPNet, fakeNode.Name, nil, 1500)
 			provisioner.SetHostKubernetesClient(hostKubernetesClient)
 
@@ -413,8 +410,7 @@ var _ = Describe("DPU CNI Provisioner in Internal mode", func() {
 			err = provisioner.RunOnce()
 			Expect(err).ToNot(HaveOccurred())
 
-			updatedHostNode := &corev1.Node{}
-			err = hostKubernetesClient.Get(ctx, types.NamespacedName{Name: "host1"}, updatedHostNode)
+			updatedHostNode, err := hostKubernetesClient.CoreV1().Nodes().Get(ctx, "host1", metav1.GetOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updatedHostNode.Annotations).To(HaveKeyWithValue("k8s.ovn.org/node-chassis-id", "current-system-id"))
 		})
@@ -447,7 +443,7 @@ var _ = Describe("DPU CNI Provisioner in Internal mode", func() {
 				},
 			}
 			kubernetesClient := testclient.NewClientset(fakeNode)
-			hostKubernetesClient := fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(hostNode).Build()
+			hostKubernetesClient := testclient.NewClientset(hostNode)
 			provisioner := dpucniprovisioner.New(context.Background(), dpucniprovisioner.InternalIPAM, clock.NewFakeClock(time.Now()), ovsClient, networkhelper, fakeExec, kubernetesClient, vtepIPNet, gateway, vtepCIDR, hostCIDR, pfIPNet, fakeNode.Name, nil, 1500)
 			provisioner.SetHostKubernetesClient(hostKubernetesClient)
 
@@ -479,8 +475,7 @@ var _ = Describe("DPU CNI Provisioner in Internal mode", func() {
 			err = provisioner.RunOnce()
 			Expect(err).ToNot(HaveOccurred())
 
-			updatedHostNode := &corev1.Node{}
-			err = hostKubernetesClient.Get(ctx, types.NamespacedName{Name: "host1"}, updatedHostNode)
+			updatedHostNode, err := hostKubernetesClient.CoreV1().Nodes().Get(ctx, "host1", metav1.GetOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updatedHostNode.Annotations).ToNot(HaveKey("k8s.ovn.org/node-chassis-id"))
 		})
@@ -508,7 +503,7 @@ var _ = Describe("DPU CNI Provisioner in Internal mode", func() {
 				},
 			}
 			kubernetesClient := testclient.NewClientset(fakeNode)
-			hostKubernetesClient := fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(newHostKubernetesClient("host1")).Build()
+			hostKubernetesClient := testclient.NewClientset(newHostKubernetesClient("host1"))
 			provisioner := dpucniprovisioner.New(context.Background(), dpucniprovisioner.InternalIPAM, clock.NewFakeClock(time.Now()), ovsClient, networkhelper, fakeExec, kubernetesClient, vtepIPNet, gateway, vtepCIDR, hostCIDR, pfIPNet, fakeNode.Name, nil, 1500)
 			provisioner.SetHostKubernetesClient(hostKubernetesClient)
 
@@ -577,7 +572,7 @@ var _ = Describe("DPU CNI Provisioner in Internal mode", func() {
 				},
 			}
 			kubernetesClient := testclient.NewClientset(fakeNode)
-			hostKubernetesClient := fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(newHostKubernetesClient("host1")).Build()
+			hostKubernetesClient := testclient.NewClientset(newHostKubernetesClient("host1"))
 			provisioner := dpucniprovisioner.New(context.Background(), dpucniprovisioner.InternalIPAM, clock.NewFakeClock(time.Now()), ovsClient, networkhelper, fakeExec, kubernetesClient, vtepIPNet, gateway, vtepCIDR, hostCIDR, pfIPNet, fakeNode.Name, nil, 1500)
 			provisioner.SetHostKubernetesClient(hostKubernetesClient)
 
@@ -674,7 +669,7 @@ var _ = Describe("DPU CNI Provisioner in Internal mode", func() {
 				},
 			}
 			kubernetesClient := testclient.NewClientset(fakeNode)
-			hostKubernetesClient := fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(newHostKubernetesClient("host1")).Build()
+			hostKubernetesClient := testclient.NewClientset(newHostKubernetesClient("host1"))
 			provisioner := dpucniprovisioner.New(context.Background(), dpucniprovisioner.InternalIPAM, clock.NewFakeClock(time.Now()), ovsClient, networkhelper, fakeExec, kubernetesClient, vtepIPNet, gateway, vtepCIDR, hostCIDR, pfIPNet, fakeNode.Name, nil, 1500)
 			provisioner.SetHostKubernetesClient(hostKubernetesClient)
 
@@ -747,7 +742,7 @@ var _ = Describe("DPU CNI Provisioner in External mode", func() {
 				},
 			}
 			kubernetesClient := testclient.NewClientset(fakeNode)
-			hostKubernetesClient := fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(newHostKubernetesClient("host1")).Build()
+			hostKubernetesClient := testclient.NewClientset(newHostKubernetesClient("host1"))
 			provisioner := dpucniprovisioner.New(context.Background(), dpucniprovisioner.ExternalIPAM, clock.NewFakeClock(time.Now()), ovsClient, networkhelper, fakeExec, kubernetesClient, nil, nil, vtepCIDR, hostCIDR, nil, fakeNode.Name, gatewayDiscoveryNetwork, 0)
 			provisioner.SetHostKubernetesClient(hostKubernetesClient)
 
@@ -853,7 +848,7 @@ network:
 				},
 			}
 			kubernetesClient := testclient.NewClientset(fakeNode)
-			hostKubernetesClient := fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(newHostKubernetesClient("host1")).Build()
+			hostKubernetesClient := testclient.NewClientset(newHostKubernetesClient("host1"))
 			provisioner := dpucniprovisioner.New(context.Background(), dpucniprovisioner.ExternalIPAM, clock.NewFakeClock(time.Now()), ovsClient, networkhelper, fakeExec, kubernetesClient, nil, nil, vtepCIDR, hostCIDR, nil, fakeNode.Name, gatewayDiscoveryNetwork, 0)
 			provisioner.SetHostKubernetesClient(hostKubernetesClient)
 
@@ -971,7 +966,7 @@ network:
 			}
 			kubernetesClient := testclient.NewClientset(fakeNode)
 			fakeClock := clock.NewFakeClock(time.Now())
-			hostKubernetesClient := fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(newHostKubernetesClient("host1")).Build()
+			hostKubernetesClient := testclient.NewClientset(newHostKubernetesClient("host1"))
 			provisioner := dpucniprovisioner.New(context.Background(), dpucniprovisioner.ExternalIPAM, fakeClock, ovsClient, networkhelper, fakeExec, kubernetesClient, nil, nil, vtepCIDR, hostCIDR, nil, fakeNode.Name, gatewayDiscoveryNetwork, 0)
 			provisioner.SetHostKubernetesClient(hostKubernetesClient)
 
